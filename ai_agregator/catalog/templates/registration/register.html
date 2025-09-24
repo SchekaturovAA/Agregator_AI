@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Регистрация - AI Aggregator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <div class="auth-logo">
+            <i class="bi bi-robot"></i>
+        </div>
+        <h2>Регистрация в AI Aggregator</h2>
+        <p class="text-muted">Создайте новую учетную запись</p>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+        {% for field in form %}
+            {% for error in field.errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ЕДИНСТВЕННАЯ форма на странице -->
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="{{ form.username.id_for_label }}" class="form-label">Имя пользователя</label>
+            {{ form.username }}
+            <div class="form-text">Обязательное поле. Не более 150 символов. Только буквы, цифры и @/./+/-/_.</div>
+            {% if form.username.errors %}
+            <div class="invalid-feedback d-block">
+                {{ form.username.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+            {{ form.email }}
+            <div class="form-text">Введите ваш email адрес.</div>
+            {% if form.email.errors %}
+            <div class="invalid-feedback d-block">
+                {{ form.email.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.password1.id_for_label }}" class="form-label">Пароль</label>
+            {{ form.password1 }}
+            <div class="form-text">
+                <ul>
+                    <li>Пароль не должен быть слишком похож на другую вашу личную информацию.</li>
+                    <li>Ваш пароль должен содержать как минимум 8 символов.</li>
+                    <li>Пароль не должен быть слишком простым и распространенным.</li>
+                    <li>Пароль не может состоять только из цифр.</li>
+                </ul>
+            </div>
+            {% if form.password1.errors %}
+            <div class="invalid-feedback d-block">
+                {{ form.password1.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.password2.id_for_label }}" class="form-label">Подтверждение пароля</label>
+            {{ form.password2 }}
+            <div class="form-text">Введите тот же пароль, что и выше, для проверки.</div>
+            {% if form.password2.errors %}
+            <div class="invalid-feedback d-block">
+                {{ form.password2.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-auth">Зарегистрироваться</button>
+    </form>
+
+    <div class="auth-footer">
+        <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войдите здесь</a></p>
+    </div>
+</div>
+
+<script>
+    // Добавляем классы Bootstrap к элементам формы
+    document.getElementById('{{ form.username.id_for_label }}').classList.add('form-control');
+    document.getElementById('{{ form.email.id_for_label }}').classList.add('form-control');
+    document.getElementById('{{ form.password1.id_for_label }}').classList.add('form-control');
+    document.getElementById('{{ form.password2.id_for_label }}').classList.add('form-control');
+</script>
+{% endblock %}

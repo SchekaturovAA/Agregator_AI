@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои закладки - AI Aggregator{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Мои закладки</h1>
+    
+    {% if bookmarks %}
+        <div class="row">
+            {% for bookmark in bookmarks %}
+                {% with service=bookmark.service %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <!-- Блок с логотипом -->
+                            <div class="logo-container" style="height: 150px; overflow: hidden; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                                <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                    {% if service.logo %}
+                                        <img src="{{ service.logo.url }}" alt="{{ service.name }}" 
+                                             class="img-fluid p-3" 
+                                             style="max-height: 140px; border-radius: 8px;">
+                                    {% else %}
+                                        <i class="bi bi-robot" style="font-size: 3rem; color: #6c757d;"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="card-body">
+                                <h5 class="card-title">{{ service.name }}</h5>
+                                <p class="card-text">{{ service.short_description }}</p>
+                                <div class="mb-2">
+                                    <span class="badge bg-{% if service.price_model == 'free' %}success{% elif service.price_model == 'freemium' %}warning{% else %}primary{% endif %}">
+                                        {{ service.get_price_model_display }}
+                                    </span>
+                                    <span class="badge bg-info ms-1">★ {{ service.rating }}</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white">
+                                <a href="{{ service.url }}" target="_blank" class="btn btn-primary">Перейти к сервису</a>
+                                <button class="btn btn-outline-secondary bookmark-btn active" data-service-id="{{ service.id }}">
+                                    ★ В закладках
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endwith %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-bookmark-star" style="font-size: 3rem; color: #6c757d;"></i>
+            <h3 class="mt-3">У вас пока нет закладок</h3>
+            <p class="text-muted">Добавляйте понравившиеся AI-сервисы в закладки, чтобы легко находить их позже.</p>
+            <a href="{% url 'home' %}" class="btn btn-primary">Найти сервисы</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

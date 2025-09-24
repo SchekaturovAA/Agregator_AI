@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Лучшие AI-сервисы</h1>
+
+    {% for category in categories %}
+        <div id="{{ category.slug }}" class="category-header mb-4">
+            <h2 class="border-bottom pb-2">{{ category.name }}</h2>
+            <p class="text-muted">{{ category.description }}</p>
+        </div>
+
+        <div class="row">
+            {% for service in category.services.all %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <!-- Контейнер для логотипа -->
+                    <div class="logo-container" style="height: 100px; width: 150px; overflow: hidden; border-top-left-radius: 10px; border-top-right-radius: 10px; margin: 12%;">
+                        <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                            {% if service.logo %}
+                                <img src="{{ service.logo.url }}" alt="{{ service.name }}"
+                                     class="img-fluid p-3"
+                                     style="max-height:130%; max-width: 130%; object-fit: contain; border-radius: 8px;margin: 15px;">
+                            {% else %}
+                                <i class="bi bi-robot" style="font-size: 3rem;"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                        <div class="card-body">
+                            <h5 class="card-title">{{ service.name }}</h5>
+                            <p class="card-text">{{ service.short_description }}</p>
+                            <div class="mb-2">
+                                <span class="badge bg-{% if service.price_model == 'free' %}success{% elif service.price_model == 'freemium' %}warning{% else %}primary{% endif %}">
+                                    {{ service.get_price_model_display }}
+                                </span>
+                                <!-- Средний рейтинг -->
+                                <span class="badge bg-info ms-1">
+                                    ★ {{ service.avg_rating_annotated|floatformat:1 }} ({{ service.rating_count_annotated }})
+                                </span>
+                            </div>
+                        </div>
+                    <div class="card-footer bg-white">
+                        <a href="{{ service.url }}" target="_blank" class="btn btn-primary">Перейти к сервису</a>
+
+                        {% if user.is_authenticated %}
+                            <!-- Кнопка закладки -->
+                            <button class="btn btn-outline-secondary bookmark-btn" data-service-id="{{ service.id }}">
+                                {% if service.id in user_bookmarks %}★ В закладках{% else %}☆ В закладки{% endif %}
+                            </button>
+
+                            <!-- Кнопка оценки с выпадающим меню -->
+                            <div class="dropdown d-inline-block ms-2">
+                                <button class="btn btn-outline-primary dropdown-toggle rating-btn mt-3 mb-3" type="button"
+                                        id="ratingDropdown{{ service.id }}" data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                        {% if service.id in user_ratings %}
+                                            ★ {{ user_ratings.service.id }}/5
+                                        {% else %}
+                                            Оценить
+                                            {% endif %}
+                                </button>
+                                <ul class="dropdown-menu rating-menu" aria-labelledby="ratingDropdown{{ service.id }}">
+                                    <li class="d-flex justify-content-around p-2">
+                                        {% for i in "12345" %}
+                                            <button type="button" class="btn btn-sm rating-option {% if service.id in user_ratings and user_ratings.service.id == forloop.counter %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                                                    data-score="{{ forloop.counter }}">
+                                                {{ forloop.counter }}
+                                            </button>
+                                        {% endfor %}
+                                    </li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                <div class="col-12">
+                    <p class="text-center">В этой категории пока нет сервисов.</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Toast для уведомлений -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">AI Aggregator</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция для получения CSRF-токена
+    function getCSRFToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Обработка закладок
+    document.querySelectorAll('.bookmark-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const serviceId = this.getAttribute('data-service-id');
+            const csrfToken = getCSRFToken();
+
+            fetch(`/toggle_bookmark/${serviceId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `csrfmiddlewaretoken=${csrfToken}`
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.status) {
+                    if (data.status === 'added') {
+                        this.innerHTML = '★ В закладках';
+                        this.classList.add('active');
+                    } else {
+                        this.innerHTML = '☆ В закладки';
+                        this.classList.remove('active');
+                    }
+
+                    // Показываем уведомление
+                    showToast(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+
+    // Обработка оценок
+    document.querySelectorAll('.rating-option').forEach(button => {
+        button.addEventListener('click', function() {
+            const score = this.getAttribute('data-score');
+            const serviceId = this.closest('.card').querySelector('.bookmark-btn').getAttribute('data-service-id');
+            const csrfToken = getCSRFToken();
+            const ratingBtn = this.closest('.dropdown').querySelector('.rating-btn');
+
+            fetch(`/service/${serviceId}/rate/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `score=${score}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Обновляем текст кнопки
+                    ratingBtn.innerHTML = `★ ${score}/5`;
+
+                    // Обновляем стиль выбранной оценки
+                    const ratingOptions = this.parentElement.querySelectorAll('.rating-option');
+                    ratingOptions.forEach(opt => {
+                        if (opt.getAttribute('data-score') === score) {
+                            opt.classList.remove('btn-outline-secondary');
+                            opt.classList.add('btn-warning');
+                        } else {
+                            opt.classList.remove('btn-warning');
+                            opt.classList.add('btn-outline-secondary');
+                        }
+                    });
+
+                    // Показываем уведомление
+                    showToast('Оценка сохранена!');
+
+                    // Закрываем выпадающее меню
+                    const dropdown = bootstrap.Dropdown.getInstance(ratingBtn);
+                    dropdown.hide();
+                } else {
+                    showToast('Ошибка при сохранении оценки', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Ошибка соединения', 'error');
+            });
+        });
+    });
+
+    // Функция для показа уведомлений
+    function showToast(message, type = 'success') {
+        const toastElement = document.getElementById('toast');
+        const toastBody = toastElement.querySelector('.toast-body');
+        toastBody.textContent = message;
+
+        if (type === 'error') {
+            toastElement.classList.add('bg-danger');
+        } else {
+            toastElement.classList.remove('bg-danger');
+        }
+
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    }
+});
+</script>
+{% endblock %}
